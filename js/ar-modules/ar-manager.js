@@ -8,229 +8,274 @@ export class ARManager {
     }
 
     async exportCurrentStructure(structureType, data) {
-        // DEBUG: Alert to confirm method call and data
-        alert(`Generating AR for ${structureType}. Items: ${data ? data.length : 0}`);
+        console.log(`[ARManager] Generating for ${structureType}`, data);
 
+        // --- 1. SETUP SCENE ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xffffff);
 
-        // Add lighting (even though we use BasicMaterial, good to have)
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+        // Root group to hold everything - essential for AR scaling/placement consistency
+        const arContent = new THREE.Group();
+        scene.add(arContent);
+
+        // --- 2. LIGHTING (Crucial for "Grey Object" fix) ---
+        // Strong Ambient Light to ensure nothing is pitch black
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
         scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(2, 5, 5);
-        scene.add(directionalLight);
 
-        // DEBUG: Comparison Cube (Red 10cm box at center)
-        // If you see this, the AR pipeline works.
-        const debugGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-        const debugMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const debugCube = new THREE.Mesh(debugGeo, debugMat);
-        debugCube.position.set(0, 0.2, 0); // Floating slightly above origin
-        scene.add(debugCube);
+        // Directional Light for depth/shadows
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
 
-        // Add a base plane for debugging (semi-transparent)
-        const baseGeometry = new THREE.PlaneGeometry(0.5, 0.5);
-        const baseMaterial = new THREE.MeshBasicMaterial({ color: 0xcccccc, side: THREE.DoubleSide, transparent: true, opacity: 0.3 });
-        const base = new THREE.Mesh(baseGeometry, baseMaterial);
-        base.rotation.x = -Math.PI / 2;
-        scene.add(base);
+        // --- 3. BASE ANCHOR (Helps iPad placement) ---
+        // Invisible plane at y=0 to help ARKit/ARCore detect "floor"
+        const baseGeo = new THREE.PlaneGeometry(0.5, 0.5);
+        const baseMat = new THREE.MeshBasicMaterial({
+            color: 0x888888,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.3
+        });
+        const basePlane = new THREE.Mesh(baseGeo, baseMat);
+        basePlane.rotation.x = -Math.PI / 2; // Flat on ground
+        arContent.add(basePlane);
 
-        // Generate specific structure
+        // --- 4. DATA FALLBACK ---
+        if (!data || data.length === 0) {
+            console.warn("[ARManager] No data provided, using DEMO data.");
+            data = [10, 20, 30, 40, 50]; // Default demo data
+            alert("No data detected. Using DEMO data for AR view.");
+        }
+
+        // --- 5. GENERATE CONTENT ---
         try {
             switch (structureType) {
                 case 'stack':
-                    this.generateStack(scene, data);
+                    this.generateStack(arContent, data);
                     break;
                 case 'queue':
-                    this.generateQueue(scene, data);
+                    this.generateQueue(arContent, data);
                     break;
                 case 'circular-queue':
-                    this.generateCircularQueue(scene, data);
+                    this.generateCircularQueue(arContent, data);
                     break;
                 case 'singly-linked-list':
                 case 'doubly-linked-list':
-                    this.generateLinkedList(scene, data);
+                    this.generateLinkedList(arContent, data);
                     break;
                 case 'bst':
-                    this.generateBST(scene, data);
+                    this.generateBST(arContent, data);
                     break;
                 case 'heap':
                 case 'scheduler':
-                    this.generateHeap(scene, data);
+                    this.generateHeap(arContent, data);
                     break;
                 default:
-                    console.warn('AR for this structure not implemented yet');
-                    alert('AR view for this structure is coming soon!');
+                    alert('AR for this structure is not yet implemented.');
                     return;
             }
-        } catch (e) {
-            alert(`Error generating structure: ${e.message}`);
+        } catch (err) {
+            console.error("[ARManager] Error generating structure:", err);
+            alert("Error constructing AR model: " + err.message);
             return;
         }
 
-        // Export to USDZ
+        // --- 6. EXPORT ---
+        this.exportScene(scene, structureType);
+    }
+
+    async exportScene(scene, filenamePrefix) {
         try {
             const usdz = await this.exporter.parse(scene);
             const blob = new Blob([usdz], { type: 'model/vnd.usdz+zip' });
             const url = URL.createObjectURL(blob);
 
-            // Trigger Quick Look (iOS) or Download
             const link = document.createElement('a');
             link.rel = 'ar';
             link.href = url;
+            link.download = `${filenamePrefix}-ar.usdz`;
 
-            // Improve filename
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            link.download = `dsa-${structureType}-${timestamp}.usdz`;
-
+            // Standard AR Icon image to prompt user gesture if needed
             const img = document.createElement('img');
             img.src = 'https://upload.wikimedia.org/wikipedia/commons/4/48/Ar_icon.png';
+            img.style.display = 'none'; // distinct click is better
             link.appendChild(img);
 
             link.click();
-        } catch (e) {
-            alert(`Error exporting USDZ: ${e.message}`);
+
+            // Cleanup
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+            }, 5000);
+
+        } catch (error) {
+            console.error("[ARManager] Export failed:", error);
+            alert("Failed to export AR file: " + error.message);
         }
     }
 
-    generateStack(scene, items) {
-        // Vertical stack of boxes
-        const geometry = new THREE.BoxGeometry(0.15, 0.15, 0.15);
-        const material = new THREE.MeshBasicMaterial({ color: 0x4CAF50 }); // Basic material
+    // --- GENERATORS (Scaled for Tabletop ~20-30cm max) ---
 
-        items.forEach((item, index) => {
-            const cube = new THREE.Mesh(geometry, material);
-            cube.position.y = (index * 0.2) + 0.075;
-            scene.add(cube);
+    generateStack(group, items) {
+        const boxSize = 0.1; // 10cm
+        const gap = 0.02;    // 2cm gap
+
+        // Material: Bright Green
+        const material = new THREE.MeshStandardMaterial({ color: 0x4CAF50, roughness: 0.3, metalness: 0.1 });
+        const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
+
+        items.forEach((val, index) => {
+            const mesh = new THREE.Mesh(geometry, material);
+            // Stack upwards: y = (size + gap) * index + half_size (pivot is center)
+            mesh.position.y = (boxSize + gap) * index + (boxSize / 2);
+            group.add(mesh);
         });
     }
 
-    generateQueue(scene, items) {
-        // Horizontal row of boxes
-        const geometry = new THREE.BoxGeometry(0.15, 0.15, 0.15);
-        const material = new THREE.MeshBasicMaterial({ color: 0x2196F3 }); // Basic material
+    generateQueue(group, items) {
+        const boxSize = 0.1;
+        const gap = 0.02;
+        const material = new THREE.MeshStandardMaterial({ color: 0x2196F3, roughness: 0.3 });
+        const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
 
-        items.forEach((item, index) => {
-            const cube = new THREE.Mesh(geometry, material);
-            cube.position.x = index * 0.2;
-            cube.position.y = 0.075; // On ground
-            scene.add(cube);
+        items.forEach((val, index) => {
+            const mesh = new THREE.Mesh(geometry, material);
+            // Line up along X axis
+            mesh.position.x = (boxSize + gap) * index;
+            mesh.position.y = boxSize / 2; // Sit on floor
+            group.add(mesh);
         });
     }
 
-    generateCircularQueue(scene, items) {
-        // Circular arrangement
-        const radius = Math.max(0.3, items.length * 0.05);
-        const geometry = new THREE.BoxGeometry(0.12, 0.12, 0.12);
-        const material = new THREE.MeshBasicMaterial({ color: 0xFF9800 }); // Basic material
+    generateCircularQueue(group, items) {
+        const boxSize = 0.08;
+        const radius = 0.25; // 25cm radius
+        const material = new THREE.MeshStandardMaterial({ color: 0xFF9800, roughness: 0.3 });
+        const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
 
-        items.forEach((item, index) => {
-            const angle = (index / items.length) * Math.PI * 2;
-            const cube = new THREE.Mesh(geometry, material);
-            cube.position.x = Math.cos(angle) * radius;
-            cube.position.z = Math.sin(angle) * radius;
-            cube.position.y = 0.06;
-            cube.lookAt(0, 0.06, 0);
-            scene.add(cube);
+        const count = items.length;
+        items.forEach((val, index) => {
+            const angle = (index / count) * Math.PI * 2;
+            const mesh = new THREE.Mesh(geometry, material);
+
+            mesh.position.x = Math.cos(angle) * radius;
+            mesh.position.z = Math.sin(angle) * radius;
+            mesh.position.y = boxSize / 2;
+
+            mesh.lookAt(0, boxSize / 2, 0); // Face center
+            group.add(mesh);
         });
     }
 
-    generateLinkedList(scene, items) {
-        // Cubes connected by small cylinder "arrows"
-        const geometry = new THREE.BoxGeometry(0.15, 0.1, 0.1);
-        const material = new THREE.MeshBasicMaterial({ color: 0x9C27B0 }); // Basic material
-        const arrowMat = new THREE.MeshBasicMaterial({ color: 0x333333 }); // Basic material
+    generateLinkedList(group, items) {
+        const boxSize = 0.08;
+        const dist = 0.2; // 20cm spacing
+        const material = new THREE.MeshStandardMaterial({ color: 0x9C27B0, roughness: 0.3 });
+        const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
 
-        items.forEach((item, index) => {
-            const cube = new THREE.Mesh(geometry, material);
-            cube.position.x = index * 0.3;
-            cube.position.y = 0.05;
-            scene.add(cube);
+        // Arrow material
+        const arrowMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        const arrowLen = dist - boxSize;
 
+        items.forEach((val, index) => {
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.x = index * dist;
+            mesh.position.y = boxSize / 2;
+            group.add(mesh);
+
+            // Draw arrow to next
             if (index < items.length - 1) {
-                const arrow = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15), arrowMat);
-                arrow.rotation.z = Math.PI / 2;
-                arrow.position.x = (index * 0.3) + 0.15 + 0.075;
-                arrow.position.y = 0.05;
-                scene.add(arrow);
+                const arrow = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, arrowLen), arrowMat);
+                arrow.rotation.z = -Math.PI / 2; // Horizontal
+                arrow.position.x = (index * dist) + (boxSize / 2) + (arrowLen / 2);
+                arrow.position.y = boxSize / 2;
+                group.add(arrow);
             }
         });
     }
 
-    generateBST(scene, root) {
+    generateBST(group, root) {
         if (!root) return;
 
-        const geometry = new THREE.SphereGeometry(0.08);
-        const material = new THREE.MeshBasicMaterial({ color: 0x009688 }); // Basic material
-        const linkMat = new THREE.MeshBasicMaterial({ color: 0x333333 }); // Basic material
+        const nodeRadius = 0.05; // 5cm
+        const material = new THREE.MeshStandardMaterial({ color: 0x009688, roughness: 0.3 });
+        const geometry = new THREE.SphereGeometry(nodeRadius);
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
 
         const traverse = (node, x, y, z, level) => {
             if (!node) return;
 
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(x, y, z);
-            scene.add(mesh);
+            group.add(mesh);
 
-            const offset = 0.5 / (level + 1);
+            const spread = 0.4 / (level + 1); // shrink spread as we go down
+            const drop = 0.2;
 
             if (node.left) {
-                traverse(node.left, x - offset, y - 0.3, z, level + 1);
-                this.addLine(scene, x, y, z, x - offset, y - 0.3, z, linkMat);
+                const nextX = x - spread;
+                const nextY = y - drop;
+                traverse(node.left, nextX, nextY, z, level + 1);
+                this.addLine(group, x, y, z, nextX, nextY, z, lineMat);
             }
             if (node.right) {
-                traverse(node.right, x + offset, y - 0.3, z, level + 1);
-                this.addLine(scene, x, y, z, x + offset, y - 0.3, z, linkMat);
-
+                const nextX = x + spread;
+                const nextY = y - drop;
+                traverse(node.right, nextX, nextY, z, level + 1);
+                this.addLine(group, x, y, z, nextX, nextY, z, lineMat);
             }
         };
 
-        traverse(root, 0, 1.0, 0, 0);
+        // Start higher up so tree hangs down or builds up
+        // Let's build up from y=0.1 or down from y=1.0? 
+        // Trees usually look better top-down. Let's start at y=1.0m
+        traverse(root, 0, 0.8, 0, 1);
     }
 
-    addLine(scene, x1, y1, z1, x2, y2, z2, material) {
-        const path = new THREE.LineCurve3(new THREE.Vector3(x1, y1, z1), new THREE.Vector3(x2, y2, z2));
-        const tube = new THREE.TubeGeometry(path, 1, 0.01, 8, false);
-        const mesh = new THREE.Mesh(tube, material);
-        scene.add(mesh);
-    }
-
-    generateHeap(scene, items) {
+    generateHeap(group, items) {
         if (!items || items.length === 0) return;
 
-        const geometry = new THREE.SphereGeometry(0.08);
-        const material = new THREE.MeshBasicMaterial({ color: 0xFFC107 }); // Basic material
-        const linkMat = new THREE.MeshBasicMaterial({ color: 0x333333 }); // Basic material
+        const nodeRadius = 0.05;
+        const material = new THREE.MeshStandardMaterial({ color: 0xFFC107, roughness: 0.3 });
+        const geometry = new THREE.SphereGeometry(nodeRadius);
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x000000 });
 
-        const positions = {};
+        const positions = {}; // map index -> {x,y,z}
 
         const traverse = (index, x, y, z, level) => {
             if (index >= items.length) return;
 
-            let value = items[index];
-            if (typeof value === 'object' && value.priority !== undefined) {
-                value = value.priority;
-            }
-
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(x, y, z);
-            scene.add(mesh);
+            group.add(mesh);
             positions[index] = { x, y, z };
 
+            // Connect to parent
             if (index > 0) {
-                const parentIndex = Math.floor((index - 1) / 2);
-                const p = positions[parentIndex];
+                const parentIdx = Math.floor((index - 1) / 2);
+                const p = positions[parentIdx];
                 if (p) {
-                    this.addLine(scene, x, y, z, p.x, p.y, p.z, linkMat);
+                    this.addLine(group, x, y, z, p.x, p.y, p.z, lineMat);
                 }
             }
 
-            const offset = 0.8 / Math.pow(2, level);
+            const spread = 0.5 / Math.pow(2, level);
+            const drop = 0.2;
 
-            traverse(2 * index + 1, x - offset, y - 0.3, z, level + 1);
-            traverse(2 * index + 2, x + offset, y - 0.3, z, level + 1);
+            traverse(2 * index + 1, x - spread, y - drop, z, level + 1);
+            traverse(2 * index + 2, x + spread, y - drop, z, level + 1);
         };
 
-        traverse(0, 0, 1.0, 0, 0);
+        traverse(0, 0, 0.8, 0, 0);
+    }
+
+    addLine(group, x1, y1, z1, x2, y2, z2, material) {
+        const points = [];
+        points.push(new THREE.Vector3(x1, y1, z1));
+        points.push(new THREE.Vector3(x2, y2, z2));
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const line = new THREE.Line(geometry, material);
+        group.add(line);
     }
 }
