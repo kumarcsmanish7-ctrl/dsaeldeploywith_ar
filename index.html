@@ -1,11 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Structures Visualizer & Analyzer</title>
     <link rel="stylesheet" href="css/style.css">
+    <!-- Three.js Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
+
 <body>
     <header>
         <h1>Data Structures Visualizer & Analyzer</h1>
@@ -30,6 +41,9 @@
                 <!-- Visualization will be rendered here -->
             </div>
             <div id="control-panel">
+                <div id="ar-controls" style="text-align: center; margin-bottom: 10px;">
+                    <!-- AR Button will be injected here -->
+                </div>
                 <div id="operations">
                     <!-- Dynamic buttons and inputs based on selected structure -->
                 </div>
@@ -55,6 +69,7 @@
     <script src="js/heap.js"></script>
     <script src="js/scheduler.js"></script>
     <script src="js/chatbot.js"></script>
-    <script src="js/main.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
+
 </html>
