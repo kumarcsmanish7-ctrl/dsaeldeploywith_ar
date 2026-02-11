@@ -148,6 +148,38 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // --- INTERACTIVE AR BUTTON ---
+    const interactiveBtn = document.createElement('button');
+    interactiveBtn.id = 'interactive-ar-btn';
+    interactiveBtn.className = 'ar-button secondary';
+    interactiveBtn.innerHTML = '<span>🎮</span> Interactive AR (WebXR)';
+    interactiveBtn.style.marginTop = '10px';
+    arControls.appendChild(interactiveBtn);
+
+    interactiveBtn.addEventListener('click', async () => {
+        if (!currentStructure) return;
+
+        // Check if WebXR is supported
+        if ('xr' in navigator) {
+            const isSupported = await navigator.xr.isSessionSupported('immersive-ar');
+            if (!isSupported) {
+                alert("WebXR 'immersive-ar' not supported on this device. Try 'View in AR' (Quick Look).");
+                return;
+            }
+        } else {
+            alert("WebXR not found. Please use a compatible browser (e.g., WebXR Viewer on iOS).");
+            return;
+        }
+
+        try {
+            const data = getCurrentStructureData(currentStructure);
+            await window.arManager.startInteractiveSession(currentStructure, data);
+        } catch (error) {
+            console.error('Interactive AR Error:', error);
+            alert('Failed to start Interactive AR: ' + error.message);
+        }
+    });
+
     function getCurrentStructureData(structure) {
         switch (structure) {
             case 'stack':
