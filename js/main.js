@@ -151,7 +151,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function getCurrentStructureData(structure) {
         switch (structure) {
             case 'stack':
-                // Accessing static property of global class
+                // Use the globally exposed data for reliability
+                if (window.dsaData && window.dsaData.length > 0) {
+                    return window.dsaData;
+                }
+                // Fallback to class access
                 return window.StackVisualizer && window.StackVisualizer.stack ? window.StackVisualizer.stack.items : [];
             case 'queue':
                 return window.QueueVisualizer && window.QueueVisualizer.queue ? window.QueueVisualizer.queue.items : [];

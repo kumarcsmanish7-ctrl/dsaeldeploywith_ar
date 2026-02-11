@@ -110,6 +110,10 @@ class StackVisualizer {
         this.visualizationArea.innerHTML = '<div class="stack"></div>';
         const stackDiv = this.visualizationArea.querySelector('.stack');
 
+        // DEBUG: Expose data globally for AR
+        window.dsaData = this.stack.items;
+        console.log("Stack updated, exposed to window.dsaData:", window.dsaData);
+
         for (let i = 0; i < this.stack.items.length; i++) {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'stack-item';
