@@ -55,6 +55,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function initializeStructure(structure) {
+        // Show or hide analysis + controls when AI Chat Bot is selected
+        const analysisPanel = document.getElementById('analysis-panel');
+        const controlsPanel = document.getElementById('controls');
+        if (structure === 'ai-chatbot') {
+            if (analysisPanel) analysisPanel.style.display = 'none';
+            if (controlsPanel) controlsPanel.style.display = 'none';
+        } else {
+            if (analysisPanel) analysisPanel.style.display = '';
+            if (controlsPanel) controlsPanel.style.display = '';
+        }
+
         switch (structure) {
             case 'stack':
                 StackVisualizer.init(visualizationArea, operationsDiv, timeComplexityP, spaceComplexityP, animationSpeed);
@@ -79,6 +90,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
             case 'scheduler':
                 TaskScheduler.init(visualizationArea, operationsDiv, timeComplexityP, spaceComplexityP, animationSpeed);
+                break;
+            case 'ai-chatbot':
+                initializeChatBot();
                 break;
         }
     }

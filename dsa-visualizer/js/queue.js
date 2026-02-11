@@ -120,9 +120,9 @@ class QueueVisualizer {
         if (value === '') return;
 
         this.queue.enqueue(value);
+        input.value = '';  // Clear input after enqueue
         this.updateVisualization();
         this.updateComplexity();
-        // Keep the input value visible
     }
 
     static async dequeue() {
@@ -156,7 +156,6 @@ class QueueVisualizer {
             itemDiv.className = 'queue-item';
             itemDiv.textContent = item;
             queueDiv.appendChild(itemDiv);
-            await Animations.fadeIn(itemDiv, this.animationSpeed);
         }
     }
 
@@ -245,7 +244,20 @@ class CircularQueueVisualizer {
         for (let i = 0; i < this.queue.size; i++) {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'queue-item';
-            if (this.queue.items[i] !== undefined) {
+            
+            // Check if this position is part of the active queue
+            let isActive = false;
+            if (!this.queue.isEmpty()) {
+                if (this.queue.front <= this.queue.rear) {
+                    // Normal case: front <= rear
+                    isActive = (i >= this.queue.front && i <= this.queue.rear);
+                } else {
+                    // Wrapped case: front > rear
+                    isActive = (i >= this.queue.front || i <= this.queue.rear);
+                }
+            }
+            
+            if (isActive && this.queue.items[i] !== undefined) {
                 itemDiv.textContent = this.queue.items[i];
             } else {
                 itemDiv.textContent = '';

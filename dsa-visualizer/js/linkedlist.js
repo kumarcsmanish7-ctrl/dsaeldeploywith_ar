@@ -133,6 +133,7 @@ class LinkedListVisualizer {
         this.spaceComplexityP = spaceComplexityP;
         this.animationSpeed = animationSpeed;
         this.isDoubly = isDoubly;
+        this.highlightedNode = null;
 
         this.setupUI();
         this.updateVisualization();
@@ -143,29 +144,40 @@ class LinkedListVisualizer {
         const listType = this.isDoubly ? 'Doubly' : 'Singly';
         this.operationsDiv.innerHTML = `
             <h3>${listType} Linked List Operations</h3>
-            <input type="text" id="list-value" placeholder="Enter value">
-            <input type="number" id="list-position" placeholder="Position (0-based)" min="0">
-            <button id="insert-begin" class="tooltip">Insert at Beginning
-                <span class="tooltiptext">O(1)</span>
-            </button>
-            <button id="insert-end" class="tooltip">Insert at End
-                <span class="tooltiptext">O(n)</span>
-            </button>
-            <button id="insert-pos" class="tooltip">Insert at Position
-                <span class="tooltiptext">O(n)</span>
-            </button>
-            <button id="delete-begin" class="tooltip">Delete from Beginning
-                <span class="tooltiptext">O(1)</span>
-            </button>
-            <button id="delete-end" class="tooltip">Delete from End
-                <span class="tooltiptext">O(n)</span>
-            </button>
-            <button id="delete-pos" class="tooltip">Delete at Position
-                <span class="tooltiptext">O(n)</span>
-            </button>
-            <button id="search-btn" class="tooltip">Search
-                <span class="tooltiptext">O(n)</span>
-            </button>
+            <div class="input-group">
+                <input type="text" id="list-value" placeholder="Enter value">
+                <input type="number" id="list-position" placeholder="Position (0-based)" min="0">
+            </div>
+            <div class="button-group">
+                <button id="insert-begin" class="tooltip">Insert at Beginning
+                    <span class="tooltiptext">Add to start - O(1)</span>
+                </button>
+                <button id="insert-end" class="tooltip">Insert at End
+                    <span class="tooltiptext">Add to end - O(n)</span>
+                </button>
+                <button id="insert-pos" class="tooltip">Insert at Position
+                    <span class="tooltiptext">Add at index - O(n)</span>
+                </button>
+            </div>
+            <div class="button-group">
+                <button id="delete-begin" class="tooltip">Delete from Beginning
+                    <span class="tooltiptext">Remove from start - O(1)</span>
+                </button>
+                <button id="delete-end" class="tooltip">Delete from End
+                    <span class="tooltiptext">Remove from end - O(n)</span>
+                </button>
+                <button id="delete-pos" class="tooltip">Delete at Position
+                    <span class="tooltiptext">Remove at index - O(n)</span>
+                </button>
+            </div>
+            <div class="button-group">
+                <button id="search-btn" class="tooltip">Search
+                    <span class="tooltiptext">Find element - O(n)</span>
+                </button>
+                <button id="traverse-btn" class="tooltip">Traverse
+                    <span class="tooltiptext">Highlight all nodes</span>
+                </button>
+            </div>
         `;
 
         document.getElementById('insert-begin').addEventListener('click', () => this.insertAtBeginning());
@@ -175,11 +187,15 @@ class LinkedListVisualizer {
         document.getElementById('delete-end').addEventListener('click', () => this.deleteFromEnd());
         document.getElementById('delete-pos').addEventListener('click', () => this.deleteAtPosition());
         document.getElementById('search-btn').addEventListener('click', () => this.search());
+        document.getElementById('traverse-btn').addEventListener('click', () => this.traverse());
     }
 
     static insertAtBeginning() {
         const value = document.getElementById('list-value').value.trim();
-        if (value === '') return;
+        if (value === '') {
+            alert('Please enter a value');
+            return;
+        }
         this.list.insertAtBeginning(value);
         this.updateVisualization();
         this.updateComplexity();
@@ -188,7 +204,10 @@ class LinkedListVisualizer {
 
     static insertAtEnd() {
         const value = document.getElementById('list-value').value.trim();
-        if (value === '') return;
+        if (value === '') {
+            alert('Please enter a value');
+            return;
+        }
         this.list.insertAtEnd(value);
         this.updateVisualization();
         this.updateComplexity();
@@ -198,7 +217,10 @@ class LinkedListVisualizer {
     static insertAtPosition() {
         const value = document.getElementById('list-value').value.trim();
         const position = parseInt(document.getElementById('list-position').value);
-        if (value === '' || isNaN(position)) return;
+        if (value === '' || isNaN(position)) {
+            alert('Please enter both value and position');
+            return;
+        }
         this.list.insertAtPosition(value, position);
         this.updateVisualization();
         this.updateComplexity();
@@ -206,13 +228,13 @@ class LinkedListVisualizer {
         document.getElementById('list-position').value = '';
     }
 
-    static async deleteFromBeginning() {
+    static deleteFromBeginning() {
         const deleted = this.list.deleteFromBeginning();
         if (deleted === null) {
             alert('List is empty!');
             return;
         }
-        await this.updateVisualization();
+        this.updateVisualization();
         this.updateComplexity();
         alert(`Deleted: ${deleted}`);
     }
@@ -230,7 +252,10 @@ class LinkedListVisualizer {
 
     static deleteAtPosition() {
         const position = parseInt(document.getElementById('list-position').value);
-        if (isNaN(position)) return;
+        if (isNaN(position)) {
+            alert('Please enter a position');
+            return;
+        }
         const deleted = this.list.deleteAtPosition(position);
         if (deleted === null) {
             alert('Invalid position or list is empty!');
@@ -244,28 +269,118 @@ class LinkedListVisualizer {
 
     static search() {
         const value = document.getElementById('list-value').value.trim();
-        if (value === '') return;
+        if (value === '') {
+            alert('Please enter a value to search');
+            return;
+        }
         const position = this.list.search(value);
         if (position === -1) {
-            alert(`${value} not found in the list`);
+            alert(`"${value}" not found in the list`);
         } else {
-            alert(`${value} found at position ${position}`);
+            alert(`"${value}" found at position ${position}`);
+            this.highlightNode(position);
         }
         this.updateComplexity();
     }
 
-    static updateVisualization() {
-        const className = this.isDoubly ? 'doubly-linked-list' : 'linked-list';
-        this.visualizationArea.innerHTML = `<div class="${className}"></div>`;
-        const listDiv = this.visualizationArea.querySelector(`.${className}`);
-
-        const items = this.list.toArray();
-        for (let item of items) {
-            const nodeDiv = document.createElement('div');
-            nodeDiv.className = this.isDoubly ? 'doubly-list-node' : 'list-node';
-            nodeDiv.textContent = item;
-            listDiv.appendChild(nodeDiv);
+    static async traverse() {
+        if (!this.list.head) {
+            alert('List is empty!');
+            return;
         }
+        let current = this.list.head;
+        let position = 0;
+        while (current) {
+            this.highlightNode(position);
+            await new Promise(resolve => setTimeout(resolve, this.animationSpeed));
+            position++;
+            current = current.next;
+        }
+        this.highlightNode(-1);
+    }
+
+    static highlightNode(position) {
+        const nodes = document.querySelectorAll('.node-box');
+        nodes.forEach((node, index) => {
+            if (index === position) {
+                node.classList.add('highlighted');
+            } else {
+                node.classList.remove('highlighted');
+            }
+        });
+    }
+
+    static updateVisualization() {
+        this.visualizationArea.innerHTML = '<div class="linked-list-container"></div>';
+        const container = this.visualizationArea.querySelector('.linked-list-container');
+
+        if (!this.list.head) {
+            container.innerHTML = '<p class="empty-message">List is empty. Add some values!</p>';
+            return;
+        }
+
+        const nodesContainer = document.createElement('div');
+        nodesContainer.className = 'nodes-container';
+
+        let current = this.list.head;
+        let position = 0;
+
+        while (current) {
+            const nodeWrapper = document.createElement('div');
+            nodeWrapper.className = 'node-wrapper';
+
+            // Create node box
+            const nodeBox = document.createElement('div');
+            nodeBox.className = 'node-box';
+
+            if (this.isDoubly) {
+                nodeBox.innerHTML = `
+                    <div class="node-content">
+                        <div class="node-section prev-section">
+                            <span class="section-label">prev</span>
+                            <span class="pointer-value">${current.prev ? '◄' : 'null'}</span>
+                        </div>
+                        <div class="node-section data-section">
+                            <span class="section-label">data</span>
+                            <span class="data-value">${current.data}</span>
+                        </div>
+                        <div class="node-section next-section">
+                            <span class="section-label">next</span>
+                            <span class="pointer-value">${current.next ? '►' : 'null'}</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                nodeBox.innerHTML = `
+                    <div class="node-content">
+                        <div class="node-section data-section">
+                            <span class="section-label">data</span>
+                            <span class="data-value">${current.data}</span>
+                        </div>
+                        <div class="node-section next-section">
+                            <span class="section-label">next</span>
+                            <span class="pointer-value">${current.next ? '→' : 'null'}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            nodeWrapper.appendChild(nodeBox);
+
+            // Add arrow if there's a next node
+            if (current.next) {
+                const arrow = document.createElement('div');
+                arrow.className = this.isDoubly ? 'double-arrow' : 'arrow';
+                arrow.innerHTML = this.isDoubly ? '⇄' : '→';
+                nodeWrapper.appendChild(arrow);
+            }
+
+            nodesContainer.appendChild(nodeWrapper);
+            current = current.next;
+            position++;
+        }
+
+        container.appendChild(nodesContainer);
     }
 
     static updateComplexity() {
