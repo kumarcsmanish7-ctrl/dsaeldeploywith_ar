@@ -115,80 +115,192 @@ export class ARManager {
         }
     }
 
-    // --- GENERATORS (Scaled for Tabletop ~20-30cm max) ---
+    // --- HELPERS ---
+
+    createLabelTexture(text) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+
+        // Background (White/Transparent)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, 256, 256);
+
+        // Border
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 10;
+        ctx.strokeRect(5, 5, 246, 246);
+
+        // Text
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold 120px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, 128, 128);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        return texture;
+    }
+
+    createInfoPanel(group, text) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 128; // Wide banner
+        const ctx = canvas.getContext('2d');
+
+        // Panel Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        // Check if roundRect is available, otherwise use fillRect
+        if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(0, 0, 512, 128, 20);
+            ctx.fill();
+        } else {
+            ctx.fillRect(0, 0, 512, 128);
+        }
+
+
+        // Text
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 40px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, 256, 64);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            side: THREE.DoubleSide
+        });
+
+        const geometry = new THREE.PlaneGeometry(0.4, 0.1); // 40cm x 10cm
+        const mesh = new THREE.Mesh(geometry, material);
+
+        // Position: Top Right
+        mesh.position.set(0.3, 0.5, 0);
+        // Look at camera (roughly front)
+        mesh.lookAt(0, 0.5, 1);
+
+        group.add(mesh);
+    }
+
+    // --- GENERATORS (High Fidelity) ---
 
     generateStack(group, items) {
         const boxSize = 0.1; // 10cm
-        const gap = 0.02;    // 2cm gap
-
-        // Material: RED for verification
-        const material = new THREE.MeshStandardMaterial({ color: 0xFF0000, roughness: 0.3, metalness: 0.1 });
-        const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
+        const gap = 0.01;    // 1cm gap
 
         items.forEach((val, index) => {
+            // Glassy Premium Material
+            // Note: USDZ export of transmission is tricky, falling back to Standard with opacity for stability
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x4CAF50, // DSA Green
+                roughness: 0.2,
+                metalness: 0.1,
+                map: this.createLabelTexture(val.toString()),
+                transparent: true,
+                opacity: 0.9
+            });
+
+            const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
             const mesh = new THREE.Mesh(geometry, material);
-            // Stack upwards: y = (size + gap) * index + half_size (pivot is center)
+
+            // Stack upwards
             mesh.position.y = (boxSize + gap) * index + (boxSize / 2);
             group.add(mesh);
         });
+
+        // Add "TOP" indicator above best element
+        if (items.length > 0) {
+            const topY = (boxSize + gap) * (items.length - 1) + boxSize + 0.05;
+            this.createInfoPanel(group, `Top: ${items[items.length - 1]}`);
+
+            // Stats Panel
+            const statsCanvas = document.createElement('canvas');
+            statsCanvas.width = 512; statsCanvas.height = 256;
+            const ctx = statsCanvas.getContext('2d');
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fillRect(0, 0, 512, 256);
+            ctx.fillStyle = '#000';
+            ctx.font = '30px Arial';
+            ctx.fillText(`Stack Size: ${items.length}`, 20, 50);
+            ctx.fillText("Time Complexity: O(1)", 20, 100);
+            ctx.fillText("Space Complexity: O(n)", 20, 150);
+
+            const tex = new THREE.CanvasTexture(statsCanvas);
+            const panel = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.3, 0.15),
+                new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
+            );
+            panel.position.set(-0.3, 0.2, 0);
+            panel.lookAt(0, 0.2, 1);
+            group.add(panel);
+        }
     }
 
     generateQueue(group, items) {
         const boxSize = 0.1;
         const gap = 0.02;
-        const material = new THREE.MeshStandardMaterial({ color: 0x2196F3, roughness: 0.3 });
-        const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
 
         items.forEach((val, index) => {
-            const mesh = new THREE.Mesh(geometry, material);
-            // Line up along X axis
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x2196F3,
+                roughness: 0.2,
+                map: this.createLabelTexture(val.toString())
+            });
+            const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
+            const mesh = new THREE.Mesh(geometry, material); // Declare mesh here
             mesh.position.x = (boxSize + gap) * index;
-            mesh.position.y = boxSize / 2; // Sit on floor
+            mesh.position.y = boxSize / 2;
             group.add(mesh);
         });
     }
 
     generateCircularQueue(group, items) {
+        // ... (Keep existing simplified logic for now but apply texture if possible)
         const boxSize = 0.08;
-        const radius = 0.25; // 25cm radius
-        const material = new THREE.MeshStandardMaterial({ color: 0xFF9800, roughness: 0.3 });
+        const radius = 0.25;
         const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
 
-        const count = items.length;
         items.forEach((val, index) => {
-            const angle = (index / count) * Math.PI * 2;
+            // ... same logic
+            const material = new THREE.MeshStandardMaterial({
+                color: 0xFF9800,
+                roughness: 0.3,
+                map: this.createLabelTexture(val.toString())
+            });
+            const angle = (index / items.length) * Math.PI * 2;
             const mesh = new THREE.Mesh(geometry, material);
-
             mesh.position.x = Math.cos(angle) * radius;
             mesh.position.z = Math.sin(angle) * radius;
             mesh.position.y = boxSize / 2;
-
-            mesh.lookAt(0, boxSize / 2, 0); // Face center
+            mesh.lookAt(0, boxSize / 2, 0);
             group.add(mesh);
         });
     }
 
     generateLinkedList(group, items) {
+        // ... (Keep existing)
         const boxSize = 0.08;
-        const dist = 0.2; // 20cm spacing
-        const material = new THREE.MeshStandardMaterial({ color: 0x9C27B0, roughness: 0.3 });
-        const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
-
-        // Arrow material
-        const arrowMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-        const arrowLen = dist - boxSize;
-
+        const dist = 0.2;
         items.forEach((val, index) => {
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x9C27B0,
+                roughness: 0.3,
+                map: this.createLabelTexture(val.toString())
+            });
+            const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.x = index * dist;
             mesh.position.y = boxSize / 2;
             group.add(mesh);
-
-            // Draw arrow to next
+            // ... arrows
             if (index < items.length - 1) {
-                const arrow = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, arrowLen), arrowMat);
-                arrow.rotation.z = -Math.PI / 2; // Horizontal
-                arrow.position.x = (index * dist) + (boxSize / 2) + (arrowLen / 2);
+                const arrowMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+                const arrow = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, dist - boxSize), arrowMat);
+                arrow.rotation.z = -Math.PI / 2;
+                arrow.position.x = (index * dist) + (boxSize / 2) + ((dist - boxSize) / 2);
                 arrow.position.y = boxSize / 2;
                 group.add(arrow);
             }
@@ -196,77 +308,66 @@ export class ARManager {
     }
 
     generateBST(group, root) {
+        // ... (Keep existing but add label support if time permits, for now keep structure)
         if (!root) return;
-
-        const nodeRadius = 0.05; // 5cm
-        const material = new THREE.MeshStandardMaterial({ color: 0x009688, roughness: 0.3 });
+        const nodeRadius = 0.05;
         const geometry = new THREE.SphereGeometry(nodeRadius);
         const lineMat = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
 
         const traverse = (node, x, y, z, level) => {
             if (!node) return;
-
+            // TODO: Sphere mapping for text is tricky, maybe add sprite?
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x009688,
+                roughness: 0.3,
+                map: this.createLabelTexture(node.value.toString()) // Assuming node has a 'value' property
+            });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(x, y, z);
             group.add(mesh);
-
-            const spread = 0.4 / (level + 1); // shrink spread as we go down
+            // ... recursion
+            const spread = 0.4 / (level + 1);
             const drop = 0.2;
-
             if (node.left) {
-                const nextX = x - spread;
-                const nextY = y - drop;
-                traverse(node.left, nextX, nextY, z, level + 1);
-                this.addLine(group, x, y, z, nextX, nextY, z, lineMat);
+                traverse(node.left, x - spread, y - drop, z, level + 1);
+                this.addLine(group, x, y, z, x - spread, y - drop, z, lineMat);
             }
             if (node.right) {
-                const nextX = x + spread;
-                const nextY = y - drop;
-                traverse(node.right, nextX, nextY, z, level + 1);
-                this.addLine(group, x, y, z, nextX, nextY, z, lineMat);
+                traverse(node.right, x + spread, y - drop, z, level + 1);
+                this.addLine(group, x, y, z, x + spread, y - drop, z, lineMat);
             }
         };
-
-        // Start higher up so tree hangs down or builds up
-        // Let's build up from y=0.1 or down from y=1.0? 
-        // Trees usually look better top-down. Let's start at y=1.0m
         traverse(root, 0, 0.8, 0, 1);
     }
 
     generateHeap(group, items) {
+        // ... (Keep existing)
         if (!items || items.length === 0) return;
-
         const nodeRadius = 0.05;
-        const material = new THREE.MeshStandardMaterial({ color: 0xFFC107, roughness: 0.3 });
         const geometry = new THREE.SphereGeometry(nodeRadius);
         const lineMat = new THREE.LineBasicMaterial({ color: 0x000000 });
-
-        const positions = {}; // map index -> {x,y,z}
-
+        const positions = {};
         const traverse = (index, x, y, z, level) => {
             if (index >= items.length) return;
-
+            const material = new THREE.MeshStandardMaterial({
+                color: 0xFFC107,
+                roughness: 0.3,
+                map: this.createLabelTexture(items[index].toString())
+            });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(x, y, z);
             group.add(mesh);
             positions[index] = { x, y, z };
-
-            // Connect to parent
             if (index > 0) {
                 const parentIdx = Math.floor((index - 1) / 2);
                 const p = positions[parentIdx];
-                if (p) {
-                    this.addLine(group, x, y, z, p.x, p.y, p.z, lineMat);
-                }
+                if (p) this.addLine(group, x, y, z, p.x, p.y, p.z, lineMat);
             }
-
             const spread = 0.5 / Math.pow(2, level);
             const drop = 0.2;
-
             traverse(2 * index + 1, x - spread, y - drop, z, level + 1);
             traverse(2 * index + 2, x + spread, y - drop, z, level + 1);
         };
-
         traverse(0, 0, 0.8, 0, 0);
     }
 
