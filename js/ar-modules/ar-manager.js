@@ -187,8 +187,8 @@ export class ARManager {
         if (!items || items.length === 0) return;
 
         const geometry = new THREE.SphereGeometry(0.08);
-        const material = new THREE.MeshStandardMaterial({ color: 0xFFC107 });
-        const linkMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        const material = new THREE.MeshBasicMaterial({ color: 0xFFC107 }); // Basic material
+        const linkMat = new THREE.MeshBasicMaterial({ color: 0x333333 }); // Basic material
 
         // Use a map to store positions for line drawing
         const positions = {};
