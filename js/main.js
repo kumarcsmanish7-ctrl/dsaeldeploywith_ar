@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const items = [];
         let current = list.head;
         while (current) {
-            items.push(current.value);
+            items.push(current.data);
             current = current.next;
         }
         return items;

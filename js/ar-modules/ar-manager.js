@@ -18,6 +18,13 @@ export class ARManager {
         directionalLight.position.set(2, 5, 5);
         scene.add(directionalLight);
 
+        // Add a base plane for debugging (semi-transparent)
+        const baseGeometry = new THREE.PlaneGeometry(0.5, 0.5);
+        const baseMaterial = new THREE.MeshBasicMaterial({ color: 0xcccccc, side: THREE.DoubleSide, transparent: true, opacity: 0.3 });
+        const base = new THREE.Mesh(baseGeometry, baseMaterial);
+        base.rotation.x = -Math.PI / 2;
+        scene.add(base);
+
         // Generate specific structure
         switch (structureType) {
             case 'stack':
