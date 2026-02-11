@@ -32,7 +32,7 @@ export class ARManager {
         // Invisible plane at y=0 to help ARKit/ARCore detect "floor"
         const baseGeo = new THREE.PlaneGeometry(0.5, 0.5);
         const baseMat = new THREE.MeshBasicMaterial({
-            color: 0x888888,
+            color: 0x0000FF, // BLUE BASE for verification
             side: THREE.DoubleSide,
             transparent: true,
             opacity: 0.3
@@ -121,8 +121,8 @@ export class ARManager {
         const boxSize = 0.1; // 10cm
         const gap = 0.02;    // 2cm gap
 
-        // Material: Bright Green
-        const material = new THREE.MeshStandardMaterial({ color: 0x4CAF50, roughness: 0.3, metalness: 0.1 });
+        // Material: RED for verification
+        const material = new THREE.MeshStandardMaterial({ color: 0xFF0000, roughness: 0.3, metalness: 0.1 });
         const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
 
         items.forEach((val, index) => {

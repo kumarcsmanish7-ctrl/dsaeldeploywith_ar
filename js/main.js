@@ -1,5 +1,5 @@
 // main.js - Main application logic
-import { ARManager } from './ar-modules/ar-manager.js';
+import { ARManager } from './ar-modules/ar-manager.js?v=force_reload_2';
 
 // Expose ARManager to window for debugging or global access if needed, 
 // though we use it inside the module scope mostly.
