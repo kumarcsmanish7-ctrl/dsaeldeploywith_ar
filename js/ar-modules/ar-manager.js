@@ -188,8 +188,11 @@ export class ARManager {
     // --- GENERATORS (High Fidelity) ---
 
     generateStack(group, items) {
+        // DEBUG DATA:
+        alert(`Stack Data Received: ${JSON.stringify(items)}\nItems Count: ${items.length}`);
+
         const boxSize = 0.1; // 10cm
-        const gap = 0.01;    // 1cm gap
+        const gap = 0.05;    // Increased gap to 5cm to be super safe
 
         items.forEach((val, index) => {
             // Glassy Premium Material
@@ -200,7 +203,7 @@ export class ARManager {
                 metalness: 0.1,
                 map: this.createLabelTexture(val.toString()),
                 transparent: true,
-                opacity: 0.9
+                opacity: 0.95 // Slightly more opaque
             });
 
             const geometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
